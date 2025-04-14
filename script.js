@@ -7,13 +7,12 @@ const INITIAL_SPEED = 0.6; // Further reduced for easier start
 const LEVEL_2_SPEED_MULTIPLIER = 1.15; // Reduced for less difficulty jump
 const LEVEL_3_SPEED_MULTIPLIER = 1.3; // Adjusted so level 3 max speed is ~2
 const MAX_GAME_SPEED = 2; // Maximum allowed game speed
-const LEVEL_2_THRESHOLD = 15; // Increased from 10 to give more time at easy level
-const LEVEL_3_THRESHOLD = 30; // Increased from 25 to give more time at medium level
-const VICTORY_THRESHOLD = 45; // Reduced from 50 for easier victory
+const LEVEL_2_THRESHOLD = 15;
+const LEVEL_3_THRESHOLD = 30;
+const VICTORY_THRESHOLD = 45;
 
 // Constants for tower management
 const MAX_VISIBLE_BLOCKS = 8; // Maximum number of blocks to show in tower
-const TOWER_SHIFT_THRESHOLD = 7; // Start shifting after this many blocks
 
 // Game variables
 let canvas, ctx;
@@ -28,6 +27,9 @@ let direction = 1; // 1 for right, -1 for left
 let level = 1;
 let animationId = null;
 let startFromLeft = true; // Track which edge to start from
+
+// Falling blocks array for animation
+let fallingBlocks = [];
 
 // DOM Elements
 const instructionElement = document.getElementById('instruction');
@@ -244,9 +246,26 @@ function dropBlock() {
         return;
     }
     
+    // Store original block position and dimensions for animation
+    const originalBlock = {
+        x: currentBlock.x,
+        y: currentBlock.y,
+        width: currentBlock.width,
+        height: currentBlock.height,
+        color: currentBlock.color
+    };
+    
     // Adjust the dropped block to the overlap area
     currentBlock.width = overlapWidth;
     currentBlock.x = Math.max(currentBlock.x, previousBlock.x);
+    
+    // Add falling animation for cut-off parts
+    if (leftOverhang > 0) {
+        addFallingBlock(originalBlock.x, originalBlock.y, leftOverhang, BLOCK_HEIGHT, originalBlock.color);
+    }
+    if (rightOverhang > 0) {
+        addFallingBlock(currentBlock.x + currentBlock.width, originalBlock.y, rightOverhang, BLOCK_HEIGHT, originalBlock.color);
+    }
     
     // Add block to tower
     blocks.push(currentBlock);
@@ -265,11 +284,83 @@ function dropBlock() {
         return;
     }
     
-    // Always shift the tower after each block is placed, starting from the first one
+    // Shift the tower and spawn new block
     shiftTowerDown();
+}
+
+// Move all blocks down to keep tower in view
+function shiftTowerDown() {
+    // Remove the bottom block if we exceed the maximum visible blocks
+    if (blocks.length > MAX_VISIBLE_BLOCKS) {
+        blocks.shift(); // Remove the bottom block
+    }
     
-    // Spawn next block
+    // Shift all remaining blocks down by one block height
+    const shiftAmount = BLOCK_HEIGHT;
+    blocks.forEach(block => {
+        block.y += shiftAmount;
+    });
+    
+    // Ensure the bottom of the tower is always at a consistent height
+    if (blocks.length > 0) {
+        const bottomBlockY = blocks[0].y;
+        const desiredBottomY = canvasHeight - BLOCK_HEIGHT;
+        
+        // If the bottom block is not at the desired position, adjust all blocks
+        if (bottomBlockY !== desiredBottomY) {
+            const adjustment = desiredBottomY - bottomBlockY;
+            blocks.slice(-MAX_VISIBLE_BLOCKS).forEach(block => {
+                block.y += adjustment;
+            });
+        }
+    }
+    
+    // Spawn the next block after shifting
     spawnNewBlock();
+}
+
+// Add a falling block animation for cut-off parts
+function addFallingBlock(x, y, width, height, color) {
+    fallingBlocks.push({
+        x,
+        y,
+        width,
+        height,
+        color,
+        velocity: 0,
+        rotation: Math.random() * 0.2 - 0.1
+    });
+}
+
+// Update falling blocks
+function updateFallingBlocks() {
+    const gravity = 0.5;
+    
+    for (let i = fallingBlocks.length - 1; i >= 0; i--) {
+        const block = fallingBlocks[i];
+        
+        // Apply gravity
+        block.velocity += gravity;
+        block.y += block.velocity;
+        block.rotation += 0.02;
+        
+        // Remove blocks that have fallen off screen
+        if (block.y > canvasHeight) {
+            fallingBlocks.splice(i, 1);
+        }
+    }
+}
+
+// Draw falling blocks
+function drawFallingBlocks() {
+    fallingBlocks.forEach(block => {
+        ctx.save();
+        ctx.translate(block.x + block.width / 2, block.y + block.height / 2);
+        ctx.rotate(block.rotation);
+        ctx.fillStyle = block.color;
+        ctx.fillRect(-block.width / 2, -block.height / 2, block.width, block.height);
+        ctx.restore();
+    });
 }
 
 // Check if the player should progress to the next level
@@ -285,37 +376,6 @@ function checkLevelProgression() {
     }
 }
 
-// Move all blocks down to keep tower in view
-function shiftTowerDown() {
-    // Shift by one block height
-    const shiftAmount = BLOCK_HEIGHT;
-    
-    // Remove the bottom block if we exceed the maximum visible blocks
-    if (blocks.length > MAX_VISIBLE_BLOCKS) {
-        blocks.shift(); // Remove the bottom block
-    }
-    
-    // Shift all remaining blocks down by one block height
-    blocks.forEach(block => {
-        block.y += shiftAmount;
-    });
-    
-    // Ensure the bottom of the tower is always at a consistent height
-    // This keeps the tower visually consistent regardless of how many blocks are in it
-    if (blocks.length > 0) {
-        const bottomBlockY = blocks[0].y;
-        const desiredBottomY = canvasHeight - BLOCK_HEIGHT;
-        
-        // If the bottom block is not at the desired position, adjust all blocks
-        if (bottomBlockY !== desiredBottomY) {
-            const adjustment = desiredBottomY - bottomBlockY;
-            blocks.forEach(block => {
-                block.y += adjustment;
-            });
-        }
-    }
-}
-
 // Draw the tower of blocks
 function drawTower() {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -325,6 +385,9 @@ function drawTower() {
     visibleBlocks.forEach(block => {
         drawBlock(block);
     });
+    
+    // Draw falling block pieces
+    drawFallingBlocks();
     
     // Draw the current moving block
     if (currentBlock) {
@@ -351,10 +414,15 @@ function drawBlock(block) {
 }
 
 // Main game loop
-function gameLoop() {
+function gameLoop(timestamp) {
     if (!gameActive) return;
     
+    // Update falling blocks regardless of game state
+    updateFallingBlocks();
+    
+    // Update the current block position
     updateBlockPosition();
+    
     drawTower();
     animationId = requestAnimationFrame(gameLoop);
 }
