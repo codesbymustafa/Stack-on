@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack-on | Tower Builder Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <h1>Stack-on Tower Builder</h1>
+        <div class="score-container">
+            <div class="high-score">
+                <p>High Score: <span id="highScore">0</span></p>
+            </div>
+            <div class="current-score">
+                <p>Score: <span id="score">0</span></p>
+            </div>
+            <div class="level">
+                <p>Level: <span id="level">1</span></p>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <div id="instruction">Click on block or press spacebar</div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        <button id="startBtn" class="btn">Start Game</button>
+        <div id="gameOverScreen" class="hidden">
+            <h2>Game Over</h2>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <button id="restartBtn" class="btn">Play Again</button>
+        </div>
+        <div id="victoryScreen" class="hidden">
+            <h2>Congratulations!</h2>
+            <p>You've conquered all levels!</p>
+            <p>Final Score: <span id="victoryScore">0</span></p>
+            <button id="playAgainBtn" class="btn">Play Again</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
