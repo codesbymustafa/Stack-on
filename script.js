@@ -237,7 +237,7 @@ function dropBlock() {
     
     // Calculate overhang
     const leftOverhang = Math.max(0, previousBlock.x - currentBlock.x);
-    const rightOverhang = Math.max(0, (currentBlock.x + currentBlock.width) - (previousBlock.x + previousBlock.width));
+    const rightOverhang = Math.max(0, currentBlock.x  - previousBlock.x);
     const overlapWidth = currentBlock.width - leftOverhang - rightOverhang;
     
     // Check if the block completely missed the tower
@@ -261,10 +261,10 @@ function dropBlock() {
     
     // Add falling animation for cut-off parts
     if (leftOverhang > 0) {
-        addFallingBlock(originalBlock.x, originalBlock.y, leftOverhang, BLOCK_HEIGHT, originalBlock.color);
+        addFallingBlock(originalBlock.x, originalBlock.y, leftOverhang, BLOCK_HEIGHT, originalBlock.color , true);
     }
     if (rightOverhang > 0) {
-        addFallingBlock(currentBlock.x + currentBlock.width, originalBlock.y, rightOverhang, BLOCK_HEIGHT, originalBlock.color);
+        addFallingBlock(currentBlock.x + currentBlock.width, originalBlock.y, rightOverhang, BLOCK_HEIGHT, originalBlock.color , false);
     }
     
     // Add block to tower
@@ -320,7 +320,10 @@ function shiftTowerDown() {
 }
 
 // Add a falling block animation for cut-off parts
-function addFallingBlock(x, y, width, height, color) {
+function addFallingBlock(x, y, width, height, color , isleft) {
+    let rotat = Math.random() * 0.1; // Random rotation for falling blocks
+    if(isleft) rotat = -rotat; // Reverse rotation for left side
+    
     fallingBlocks.push({
         x,
         y,
@@ -328,7 +331,7 @@ function addFallingBlock(x, y, width, height, color) {
         height,
         color,
         velocity: 0,
-        rotation: Math.random() * 0.2 - 0.1
+        rotation: rotat
     });
 }
 
@@ -342,7 +345,7 @@ function updateFallingBlocks() {
         // Apply gravity
         block.velocity += gravity;
         block.y += block.velocity;
-        block.rotation += 0.02;
+        block.rotation < 0 ? block.rotation -= 0.02 : block.rotation += 0.02;
         
         // Remove blocks that have fallen off screen
         if (block.y > canvasHeight) {
