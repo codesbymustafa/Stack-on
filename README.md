@@ -53,4 +53,4 @@ Potential features for future versions:
 
 ## Credits
 
-Developed by Mustafa Koser for Evolve recruitment challenge.
+Developed by Mustafa Koser with ❤️.
