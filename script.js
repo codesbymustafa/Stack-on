@@ -11,8 +11,7 @@ const LEVEL_2_THRESHOLD = 15;
 const LEVEL_3_THRESHOLD = 30;
 const VICTORY_THRESHOLD = 45;
 
-// Constants for tower management
-const MAX_VISIBLE_BLOCKS = 8; // Maximum number of blocks to show in tower
+let MAX_VISIBLE_BLOCKS = 8; // Maximum number of blocks to show in tower
 
 // Game variables
 let canvas, ctx;
@@ -101,6 +100,8 @@ function resizeCanvas() {
     
     canvasHeight = Math.max(desiredHeight, 400); // Minimum height of 400px
     canvas.height = canvasHeight;
+
+    MAX_VISIBLE_BLOCKS = Math.floor((canvasHeight/2) / BLOCK_HEIGHT) - 1; // Adjust max visible blocks based on height
     
     // Scale everything if needed
     if (gameActive) {
@@ -466,8 +467,11 @@ function victory() {
 
 // Event handlers
 function handleKeyDown(e) {
-    if (e.code === 'Space' && gameActive) {
-        dropBlock();
+    if (e.code === 'Space') {
+        if(gameActive) 
+            dropBlock();
+        else
+            startGame();
     }
 }
 
@@ -478,4 +482,4 @@ function handleCanvasClick() {
 }
 
 // Initialize the game when page loads
-window.addEventListener('load', init);
+window.addEventListener('load',init );
