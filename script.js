@@ -1,19 +1,19 @@
-// Game constants
+//constants
 const BLOCK_HEIGHT = 30;
-const INITIAL_BLOCK_WIDTH_LARGE = 220; // For larger screens
-const INITIAL_BLOCK_WIDTH_SMALL = 160; // For smaller screens
-const SCREEN_SIZE_THRESHOLD = 600; // Width threshold for smaller screens
-const INITIAL_SPEED = 0.6; // Further reduced for easier start
-const LEVEL_2_SPEED_MULTIPLIER = 1.15; // Reduced for less difficulty jump
-const LEVEL_3_SPEED_MULTIPLIER = 1.3; // Adjusted so level 3 max speed is ~2
-const MAX_GAME_SPEED = 2; // Maximum allowed game speed
+const INITIAL_BLOCK_WIDTH_LARGE = 220; 
+const INITIAL_BLOCK_WIDTH_SMALL = 160; 
+const SCREEN_SIZE_THRESHOLD = 600; 
+const INITIAL_SPEED = 0.6;
+const LEVEL_2_SPEED_MULTIPLIER = 1.15; 
+const LEVEL_3_SPEED_MULTIPLIER = 1.3; 
+const MAX_GAME_SPEED = 2; 
 const LEVEL_2_THRESHOLD = 15;
 const LEVEL_3_THRESHOLD = 30;
 const VICTORY_THRESHOLD = 45;
 
-let MAX_VISIBLE_BLOCKS = 8; // Maximum number of blocks to show in tower
+let MAX_VISIBLE_BLOCKS = 8; 
 
-// Game variables
+// variables
 let canvas, ctx;
 let canvasWidth, canvasHeight;
 let blocks = [];
@@ -22,10 +22,10 @@ let gameActive = false;
 let score = 0;
 let highScore = 0;
 let gameSpeed = INITIAL_SPEED;
-let direction = 1; // 1 for right, -1 for left
+let direction = 1; // 1 -> right, -1 -> left
 let level = 1;
 let animationId = null;
-let startFromLeft = true; // Track which edge to start from
+let startFromLeft = true;
 
 // Falling blocks array for animation
 let fallingBlocks = [];
@@ -43,46 +43,63 @@ const victoryScreen = document.getElementById('victoryScreen');
 const finalScoreElement = document.getElementById('finalScore');
 const victoryScoreElement = document.getElementById('victoryScore');
 
-// Initialize the game
-function init() {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    
-    // Load high score from local storage
-    highScore = localStorage.getItem('stackOnHighScore') || 0;
-    highScoreElement.textContent = highScore;
-    
-    // Set initial canvas size
-    resizeCanvas();
-    
-    // Reset edge alternation
-    startFromLeft = true;
-    
-    // Place initial base block (visible even before game starts)
-    const initialBlockWidth = canvasWidth < SCREEN_SIZE_THRESHOLD ? 
-        INITIAL_BLOCK_WIDTH_SMALL : INITIAL_BLOCK_WIDTH_LARGE;
-    
-    const initialBlock = createBlock(
-        (canvasWidth - initialBlockWidth) / 2,
-        canvasHeight - BLOCK_HEIGHT,
-        initialBlockWidth,
-        BLOCK_HEIGHT
-    );
-    blocks.push(initialBlock);
-    
-    // Draw the initial block
-    drawTower();
-    
-    // Event listeners
-    window.addEventListener('resize', resizeCanvas);
-    startBtn.addEventListener('click', startGame);
-    restartBtn.addEventListener('click', startGame);
-    playAgainBtn.addEventListener('click', startGame);
-    window.addEventListener('keydown', handleKeyDown);
-    canvas.addEventListener('click', handleCanvasClick);
+
+function createBlock(x, y, width, height) {
+    return {
+        x,
+        y,
+        width,
+        height,
+        color: getRandomColor()
+    };
 }
 
-// Resize canvas to fit screen
+function drawBlock(block) {
+    ctx.fillStyle = block.color;
+    ctx.fillRect(block.x, block.y, block.width, block.height);
+    
+    // Add a subtle 3D effect
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(block.x, block.y, block.width, 5);
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(block.x, block.y + block.height - 5, block.width, 5);
+    
+    // Block outline
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(block.x, block.y, block.width, block.height);
+}
+
+function drawFallingBlocks() {
+    fallingBlocks.forEach(block => {
+        ctx.save();
+        ctx.translate(block.x + block.width / 2, block.y + block.height / 2);
+        ctx.rotate(block.rotation);
+        ctx.fillStyle = block.color;
+        ctx.fillRect(-block.width / 2, -block.height / 2, block.width, block.height);
+        ctx.restore();
+    });
+}
+
+function drawTower() {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // Draw only the visible blocks (from the bottom of the array)
+    const visibleBlocks = blocks.slice(-MAX_VISIBLE_BLOCKS);
+    visibleBlocks.forEach(block => {
+        drawBlock(block);
+    });
+    
+    // Draw falling block pieces
+    drawFallingBlocks();
+    
+    // Draw the current moving block
+    if (currentBlock) {
+        drawBlock(currentBlock);
+    }
+}
+
 function resizeCanvas() {
     const container = canvas.parentElement;
     
@@ -90,8 +107,6 @@ function resizeCanvas() {
     canvasWidth = container.clientWidth;
     canvas.width = canvasWidth;
     
-    // Set height based on aspect ratio but cap it for very tall screens
-    // Use a 3:4 aspect ratio (width:height) with a maximum height
     const desiredHeight = Math.min(
         canvasWidth * (4/3),             // Aspect ratio based height
         window.innerHeight * 0.7,        // 70% of viewport height
@@ -122,15 +137,41 @@ function resizeCanvas() {
     }
 }
 
-// Create a block object
-function createBlock(x, y, width, height) {
-    return {
-        x,
-        y,
-        width,
-        height,
-        color: getRandomColor()
-    };
+// Initialization
+function init() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    
+    
+    highScore = localStorage.getItem('stackOnHighScore') || 0;
+    highScoreElement.textContent = highScore;
+    
+    resizeCanvas();
+    
+    startFromLeft = true;
+    
+    // Place initial base block (visible even before game starts)
+    const initialBlockWidth = canvasWidth < SCREEN_SIZE_THRESHOLD ? 
+        INITIAL_BLOCK_WIDTH_SMALL : INITIAL_BLOCK_WIDTH_LARGE;
+    
+    const initialBlock = createBlock(
+        (canvasWidth - initialBlockWidth) / 2,
+        canvasHeight - BLOCK_HEIGHT,
+        initialBlockWidth,
+        BLOCK_HEIGHT
+    );
+    blocks.push(initialBlock);
+    
+    // Draw the initial block
+    drawTower();
+    
+    // Event listeners
+    window.addEventListener('resize', resizeCanvas);
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+    playAgainBtn.addEventListener('click', startGame);
+    window.addEventListener('keydown', handleKeyDown);
+    canvas.addEventListener('click', handleCanvasClick);
 }
 
 // Generate a random color for blocks
@@ -355,18 +396,6 @@ function updateFallingBlocks() {
     }
 }
 
-// Draw falling blocks
-function drawFallingBlocks() {
-    fallingBlocks.forEach(block => {
-        ctx.save();
-        ctx.translate(block.x + block.width / 2, block.y + block.height / 2);
-        ctx.rotate(block.rotation);
-        ctx.fillStyle = block.color;
-        ctx.fillRect(-block.width / 2, -block.height / 2, block.width, block.height);
-        ctx.restore();
-    });
-}
-
 // Check if the player should progress to the next level
 function checkLevelProgression() {
     if (score === LEVEL_2_THRESHOLD) {
@@ -380,42 +409,6 @@ function checkLevelProgression() {
     }
 }
 
-// Draw the tower of blocks
-function drawTower() {
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    
-    // Draw only the visible blocks (from the bottom of the array)
-    const visibleBlocks = blocks.slice(-MAX_VISIBLE_BLOCKS);
-    visibleBlocks.forEach(block => {
-        drawBlock(block);
-    });
-    
-    // Draw falling block pieces
-    drawFallingBlocks();
-    
-    // Draw the current moving block
-    if (currentBlock) {
-        drawBlock(currentBlock);
-    }
-}
-
-// Draw a single block
-function drawBlock(block) {
-    ctx.fillStyle = block.color;
-    ctx.fillRect(block.x, block.y, block.width, block.height);
-    
-    // Add a subtle 3D effect
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.fillRect(block.x, block.y, block.width, 5);
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(block.x, block.y + block.height - 5, block.width, 5);
-    
-    // Block outline
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(block.x, block.y, block.width, block.height);
-}
 
 // Main game loop
 function gameLoop(timestamp) {
